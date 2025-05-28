@@ -45,6 +45,8 @@ The script will:
 2. Check each for the custom field
 3. Add matching events to the Nextcloud calendar
 
+Most likely you will want to execute the script reguarly using a cron or a similar service.
+
 ## 🔒 Security
 
 - It's recommended to use an [app password](https://docs.nextcloud.com/server/latest/user_manual/en/security/app_passwords.html) for Nextcloud access.
