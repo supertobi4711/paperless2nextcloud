@@ -20,7 +20,7 @@ This Python script reads documents from a [Paperless-ngx](https://github.com/pap
 ### Python dependencies (install via pip):
 
 ```bash
-pip install requests caldav python-dateutil
+pip install requests pytz
 ```
 
 ## ⚙️ Configuration
@@ -37,7 +37,7 @@ Edit the script:
 ## 🚀 Usage
 
 ```bash
-python paperless_to_nextcloud.py
+python3 paperless2nextcloud.py
 ```
 
 The script will:
