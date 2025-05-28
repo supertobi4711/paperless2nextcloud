@@ -17,11 +17,11 @@ try:
     response = requests.get(api_url, params=params, auth=auth)
     response.raise_for_status()
 except requests.RequestException as e:
-    print(f"❌ Fehler beim Abrufen der Dokumente: {e}")
+    print(f"❌ Error retrieving documents: {e}")
     sys.exit(1)
 
 data = response.json()
-print(f"📄 {data['count']} Dokument(e) gefunden.")
+print(f"📄 {data['count']} document(s) found.")
 
 for doc in data.get("results", []):
     doc_id = doc["id"]
@@ -30,35 +30,33 @@ for doc in data.get("results", []):
 
     for field in doc.get("custom_fields", []):
         try:
-            # Fristdatum vorbereiten
-            # Zeitzone
             local_tz = pytz.timezone("Europe/Berlin")
 
-            # Fristdatum als Datum parsen
+            # parse due date
             #due_date = datetime.fromisoformat(field["value"]).date()
 
             value = field.get("value")
 
             if not isinstance(value, str):
-                print(f"⚠️  Feldwert ist kein String für Dokument {doc_id}: {value} ({type(value)})")
-                continue  # nächstes Feld prüfen
+                print(f"⚠️  custom field is no string for document {doc_id}: {value} ({type(value)})")
+                continue  
 
             try:
                 due_date = datetime.fromisoformat(value).date()
             except ValueError as e:
-                print(f"⚠️  Ungültiges Datumsformat in Dokument {doc_id}: {value}")
+                print(f"⚠️  invalid date format for document {doc_id}: {value}")
                 continue
 
-            # Setze Uhrzeit auf 19:30 in lokaler Zeit
+            # always use 7:30 pm local time
             local_due = local_tz.localize(datetime.combine(due_date, time(19, 30)))
             due_dt = local_due.astimezone(timezone.utc)
             due_str = due_dt.strftime("%Y%m%dT%H%M%SZ")
             uid = f"task-{doc_id}"
             ics_path = f"{uid}.ics"
             dtstamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-            description = f"Dokument aus Paperless\\n\\nLink: {url}"
+            description = f"Document from paperless\\n\\nLink: {url}"
 
-            # Neuen ICS-Inhalt vorbereiten
+            # prepare ICS
             new_ics = "\n".join([
                 "BEGIN:VCALENDAR",
                 "VERSION:2.0",
@@ -75,26 +73,25 @@ for doc in data.get("results", []):
                 "END:VCALENDAR"
             ])
 
-            # Bestehende Datei abrufen (falls vorhanden)
+            # check for existing entry
             get_url = f"{NEXTCLOUD_URL}{ics_path}"
             existing = requests.get(get_url, auth=(NEXTCLOUD_USER, NEXTCLOUD_APP_PASSWORD))
 
-            # Wenn vorhanden: DUE vergleichen
+            # if exists: compare due date
             if existing.status_code == 200 and "DUE:" in existing.text:
                 for line in existing.text.splitlines():
                     if line.startswith("DUE:"):
                         existing_due = line.strip().split(":", 1)[1]
                         if existing_due == due_str:
-                            print(f"⏩ Keine Änderung für {uid} ({due_str}) – übersprungen.")
+                            print(f"⏩ No change for document {uid} ({due_str}) – skipped.")
                             break
                 else:
-                    # Kein DUE gefunden – sicherheitshalber überschreiben
+                    # no due date found
                     pass
             else:
-                # Datei existiert nicht oder kein DUE → immer schreiben
+                # file doesn't exist
                 pass
 
-            # Immer noch in Schleife? Dann aktualisieren
             put_url = f"{NEXTCLOUD_URL}{ics_path}"
             res = requests.put(
                 put_url,
@@ -104,9 +101,9 @@ for doc in data.get("results", []):
             )
 
             if res.status_code in (200, 201, 204):
-                print(f"✅ Aktualisiert: {uid} → {title}")
+                print(f"✅ Updated: {uid} → {title}")
             else:
-                print(f"❌ Fehler {res.status_code} bei {uid}: {res.text}")
+                print(f"❌ Error {res.status_code} for {uid}: {res.text}")
 
         except Exception as e:
-            print(f"⚠️ Fehler bei Dokument {doc_id}: {e}")
+            print(f"⚠️ Errot in document {doc_id}: {e}")
